@@ -1,6 +1,8 @@
 package com.b22cn539.expense_management.Controller;
 
 import com.b22cn539.expense_management.DTO.APIResponse;
+import com.b22cn539.expense_management.DTO.Jwt.JwtResponse;
+import com.b22cn539.expense_management.DTO.User.UserLogin;
 import com.b22cn539.expense_management.DTO.User.UserRegister;
 import com.b22cn539.expense_management.DTO.User.UserResponse;
 import com.b22cn539.expense_management.Service.User.IUserService;
@@ -30,5 +32,16 @@ public class UserController {
                 .data(userResponse)
                 .build();
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping(value = "/login")
+    public ResponseEntity<APIResponse<JwtResponse>> login(@Valid @RequestBody UserLogin userLogin) {
+        JwtResponse jwtResponse = this.userService.login(userLogin);
+        APIResponse<JwtResponse> response = APIResponse.<JwtResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("SUCCESS")
+                .data(jwtResponse)
+                .build();
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }

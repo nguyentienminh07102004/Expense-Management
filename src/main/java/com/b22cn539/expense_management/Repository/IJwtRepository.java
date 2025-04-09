@@ -4,6 +4,9 @@ import com.b22cn539.expense_management.Entity.JwtEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
+
 @Repository
 public interface IJwtRepository extends JpaRepository<JwtEntity, String> {
+    void deleteAllByRefreshExpiresBefore(Date refreshExpiresBefore);
 }

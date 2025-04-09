@@ -4,6 +4,7 @@ import com.b22cn539.expense_management.Common.BeanCustomer.AppConstant;
 import com.b22cn539.expense_management.Common.Enum.AppException;
 import com.b22cn539.expense_management.Common.Exception.DataInvalidException;
 import com.b22cn539.expense_management.DTO.Jwt.JwtDTO;
+import com.b22cn539.expense_management.DTO.Jwt.JwtResponse;
 import com.b22cn539.expense_management.Entity.JwtEntity;
 import com.b22cn539.expense_management.Entity.UserEntity;
 import com.b22cn539.expense_management.Repository.IJwtRepository;
@@ -34,7 +35,7 @@ public class JwtServiceImpl implements IJwtService {
 
     @Override
     @Transactional
-    public JwtDTO generateJwt(UserEntity user) {
+    public JwtResponse generateJwt(UserEntity user) {
         try {
             JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
             String jwtId = UUID.randomUUID().toString();
@@ -45,7 +46,7 @@ public class JwtServiceImpl implements IJwtService {
                     .jwtID(jwtId)
                     .claim(AppConstant.ROLE_CLAIM, user.getRole().getCode())
                     .build();
-            JWSObject jwsObject = new JWSObject(header, new Payload(jwtClaimsSet.getClaims()));
+            JWSObject jwsObject = new JWSObject(header, new Payload(jwtClaimsSet.toJSONObject()));
             jwsObject.sign(new MACSigner(signerKey.getBytes()));
             JwtEntity jwtEntity = JwtEntity.builder()
                     .id(jwtId)
@@ -55,15 +56,15 @@ public class JwtServiceImpl implements IJwtService {
                     .user(user)
                     .build();
             jwtRepository.save(jwtEntity);
-            return JwtDTO.builder()
+            return JwtResponse.builder()
                     .id(jwtId)
                     .expires(expiration)
-                    .refreshExpires(jwtEntity.getRefreshExpires())
+                    .expiresRefreshToken(jwtEntity.getRefreshExpires())
                     .refreshToken(jwtEntity.getRefreshToken())
                     .token(jwsObject.serialize())
                     .build();
         } catch (JOSEException e) {
-            throw new RuntimeException(e);
+            throw new DataInvalidException(AppException.SERVER_ERROR);
         }
     }
 
@@ -76,5 +77,11 @@ public class JwtServiceImpl implements IJwtService {
         } catch (ParseException | JOSEException e) {
             throw new DataInvalidException(AppException.TOKEN_INVALID);
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteJwtExpire() {
+        this.jwtRepository.deleteAllByRefreshExpiresBefore(new Date(System.currentTimeMillis()));
     }
 }

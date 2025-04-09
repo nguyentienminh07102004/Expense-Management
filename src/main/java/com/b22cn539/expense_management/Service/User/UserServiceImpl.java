@@ -4,7 +4,10 @@ import com.b22cn539.expense_management.Common.BeanCustomer.AppConstant;
 import com.b22cn539.expense_management.Common.Enum.AppException;
 import com.b22cn539.expense_management.Common.Enum.UserStatus;
 import com.b22cn539.expense_management.Common.Exception.DataInvalidException;
+import com.b22cn539.expense_management.DTO.Jwt.JwtDTO;
+import com.b22cn539.expense_management.DTO.Jwt.JwtResponse;
 import com.b22cn539.expense_management.DTO.Role.RoleResponse;
+import com.b22cn539.expense_management.DTO.User.UserLogin;
 import com.b22cn539.expense_management.DTO.User.UserRegister;
 import com.b22cn539.expense_management.DTO.User.UserResponse;
 import com.b22cn539.expense_management.Entity.RoleEntity;
@@ -15,6 +18,8 @@ import com.b22cn539.expense_management.Repository.IUserRepository;
 import com.b22cn539.expense_management.Service.Jwt.IJwtService;
 import com.b22cn539.expense_management.Service.Role.IRoleService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +34,9 @@ public class UserServiceImpl implements IUserService {
     private final IRoleMapper roleMapper;
     private final PasswordEncoder passwordEncoder;
     private final IRoleService roleService;
+
+    @Value(value = "${maxDeviceLogin}")
+    private Long maxDeviceLogin;
 
     @Override
     @Transactional
@@ -66,10 +74,32 @@ public class UserServiceImpl implements IUserService {
         return this.userRepository.existsByEmail(email);
     }
 
+    @Override
+    @Transactional
+    public JwtResponse login(UserLogin userLogin) {
+        UserEntity userEntity = this.findByEmail(userLogin.getEmail());
+        if (!this.passwordEncoder.matches(userLogin.getPassword(), userEntity.getPassword())) {
+            throw new DataInvalidException(AppException.EMAIL_OR_PASSWORD_NOT_CORRECT);
+        }
+        if (userEntity.getStatus().equals(UserStatus.INACTIVE)) {
+            throw new DataInvalidException(AppException.USER_ACCOUNT_LOCKED);
+        }
+        if (userEntity.getJwts().size() >= this.maxDeviceLogin) {
+            throw new DataInvalidException(AppException.USER_ACCOUNT_LOGIN_MAX_DEVICE);
+        }
+        return this.jwtService.generateJwt(userEntity);
+    }
+
     public UserResponse entityToResponse(UserEntity userEntity) {
         UserResponse userResponse = this.userMapper.entityToResponse(userEntity);
         RoleResponse roleResponse = this.roleMapper.entityToResponse(userEntity.getRole());
         userResponse.setRole(roleResponse);
         return userResponse;
+    }
+
+    @Scheduled(cron = "0 45 0 * * *")
+    @Transactional
+    public void deleteAllJwtExpire() {
+        this.jwtService.deleteJwtExpire();
     }
 }

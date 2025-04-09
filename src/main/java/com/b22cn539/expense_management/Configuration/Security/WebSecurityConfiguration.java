@@ -1,10 +1,11 @@
-package com.b22cn539.expense_management.Security;
+package com.b22cn539.expense_management.Configuration.Security;
 
 import com.b22cn539.expense_management.Common.BeanCustomer.AppConstant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,6 +34,9 @@ public class WebSecurityConfiguration {
         httpSecurity.authorizeHttpRequests(request ->
                 request.requestMatchers("/users/login").permitAll()
                         .requestMatchers("/users/register").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/messages/{sender}/{receiver}").permitAll()
+                        .requestMatchers("/ws").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs**").permitAll()
                         .anyRequest().authenticated());
         httpSecurity
                 .oauth2ResourceServer(oauth2 -> oauth2
